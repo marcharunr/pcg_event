@@ -8,6 +8,7 @@
 - **リッチなSlack通知:** SlackのBlock Kitを利用し、イベント名、店舗、場所、日時、URLなどを見やすく整形して通知します。
 - **堅牢な永続化:** 通知済みのイベントをSQLiteデータベースに保存し、スクリプトの再起動後も重複した通知を防ぎます。
 - **安全な設定管理:** `config.json`ファイルで設定を管理し、SlackのWebhook URLなどの秘密情報をコードから分離します。
+- **死活監視 (ハートビート):** Healthchecks.io などの外部サービスと連携し、スクリプトが正常に動作しているかを監視します。
 - **高度なエラーハンドリング:** ページ取得の失敗や解析エラーを検知し、詳細なエラー内容をSlackへアラートとして通知します。
 - **サーバーへの配慮:** アクセス間隔に調整し、サーバー負荷を軽減します。またアクセス間隔にランダムな「ゆらぎ（ジッター）」を持たせます。
 - **詳細なロギング:** `logging`モジュールを使用し、日次でローテーションされるログファイルに全活動を記録します。
@@ -48,6 +49,14 @@
     cp config.json.example config.json
     ```
     その後、`config.json`を開き、ご自身の`SLACK_WEBHOOK_URL`を正しい値に書き換えてください。
+
+6.  **(任意) 死活監視の設定**
+    スクリプトが停止していないかを監視するために、Healthchecks.io のようなハートビート監視サービスを利用することを推奨します。現在、[healthchecks.ioh](ttps://healthchecks.io/)でのみ動作確認しています。
+    1.  サービスに登録し、新しいチェックを作成してPing URLを取得します。
+    2.  `config.json` を開き、`HEALTHCHECKS_URL` に取得したURLを設定します。
+    ```json
+    "HEALTHCHECKS_URL": "https://hc-ping.com/your-uuid"
+    ```
 
 ## 🏃‍ 実行方法
 
@@ -104,6 +113,7 @@ macOSでスクリプトを永続的に実行するには、`launchd`を利用す
 - `TARGET_URL`: (必須) 監視対象のイベント検索ページのURL。
 - `MIN_INTERVAL_SECONDS`: 最小チェック間隔（秒）。
 - `MAX_INTERVAL_SECONDS`: 最大チェック間隔（秒）。この範囲でランダムに待機します。
+- `HEALTHCHECKS_URL`: (任意) Healthchecks.io などの死活監視サービスから取得したPing URL。
 - `DEBUG_MODE`: `true`にするとデバッグモードで実行します。
 - `INJECT_PAGE_ERROR`: (デバッグ用) `true`にすると、意図的にページ取得エラーを発生させ、エラー通知をテストします。
 - `INJECT_PARSE_ERROR`: (デバッグ用) `true`にすると、意図的に解析エラーを発生させ、エラー通知をテストします。

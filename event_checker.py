@@ -20,6 +20,7 @@ try:
     TARGET_URL = config.get("TARGET_URL", "")
     MIN_INTERVAL_SECONDS = config.get("MIN_INTERVAL_SECONDS", 30)
     MAX_INTERVAL_SECONDS = config.get("MAX_INTERVAL_SECONDS", 60)
+    HEALTHCHECKS_URL = config.get("HEALTHCHECKS_URL", "")
     DEBUG_MODE = config.get("DEBUG_MODE", False)
     INJECT_PAGE_ERROR = config.get("INJECT_PAGE_ERROR", False)
     INJECT_PARSE_ERROR = config.get("INJECT_PARSE_ERROR", False)
@@ -126,6 +127,19 @@ def send_slack_notification(new_events: List[Dict[str, str]], is_alert: bool = F
         logging.info("Slackに通知を送信しました。")
     except requests.exceptions.RequestException as e:
         logging.error(f"Slack通知の送信に失敗しました: {e}")
+
+def send_heartbeat():
+    """Healthchecks.ioなどの死活監視サービスにハートビートを送信する"""
+    if not HEALTHCHECKS_URL:
+        return  # URLが設定されていなければ何もしない
+
+    try:
+        requests.get(HEALTHCHECKS_URL, timeout=10)
+        logging.info("死活監視サービスにハートビートを送信しました。")
+    except requests.exceptions.RequestException as e:
+        # ハートビートの失敗はメインの処理を止めないように、警告ログのみ出力
+        logging.warning(f"死活監視サービスへのハートビート送信に失敗しました: {e}")
+
 
 # ==============================================================================
 # --- コアロジック ---
@@ -320,6 +334,9 @@ def run_loop(page: Optional[Page]):
                     if notified_event_links:
                         notified_event_links.clear()
                         clear_notified_events_in_db()
+
+            # 正常に1サイクルが完了したことを通知
+            send_heartbeat()
 
         except Exception as e:
             # logging.exceptionは、exceptブロック内で使うと自動でトレースバック情報をログに含めてくれる

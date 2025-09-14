@@ -3,6 +3,7 @@
     "TARGET_URL": "https://players.pokemon-card.com/event/search?prefecture=8&prefecture=9&prefecture=10&prefecture=11&prefecture=12&prefecture=13&prefecture=14&event_type=3:2&league_type=2&offset=0&accepting=true&order=1",
     "MIN_INTERVAL_SECONDS": 6600,
     "MAX_INTERVAL_SECONDS": 7800,
+    "HEALTHCHECKS_URL": "",
     "DEBUG_MODE": false,
     "INJECT_PAGE_ERROR": false,
     "INJECT_PARSE_ERROR": false
