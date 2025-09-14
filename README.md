@@ -1,6 +1,6 @@
 # ポケモンカードゲーム イベント監視スクリプト (Pokémon Trading Card Game Event Monitor)
 
-指定された[ポケモンカードゲーム プレイヤーズクラブのイベント検索ページ](https://players.pokemon-card.com/event/search)を定期的に監視し、新たなイベント（キャンセルによる空きを含む）が追加された際にSlackへ通知を送信するPythonスクリプトです。
+指定された[ポケモンカードゲーム トレーナーズウェブサイトのイベント検索ページ](https://players.pokemon-card.com/event/search)を定期的に監視し、新たなイベント（キャンセルによる空きを含む）が追加された際にSlackへ通知を送信するPythonスクリプトです。
 
 ## ✨ 主な機能
 
@@ -52,7 +52,7 @@
     ```bash
     cp config.json.example config.json
     ```
-    その後、`config.json`を開き、 `TARGET_URL`を指定してください。このURLは[ポケモンカードゲーム プレイヤーズクラブのイベント検索ページ](https://players.pokemon-card.com/event/search)で、希望の条件で検索した際に表示されるURLです。また通知を受けたいslackチャンネルの`SLACK_WEBHOOK_URL`を正しい値に書き換えてください。
+    その後、`config.json`を開き、 `TARGET_URL`を指定してください。このURLは[ポケモンカードゲーム トレーナーズウェブサイトのイベント検索ページ](https://players.pokemon-card.com/event/search)で、希望の条件で検索した際に表示されるURLです。また通知を受けたいslackチャンネルの`SLACK_WEBHOOK_URL`を正しい値に書き換えてください。
 
 6.  **(任意) 死活監視の設定**
     スクリプトが停止していないかを監視するために、Healthchecks.io のようなハートビート監視サービスを利用することを推奨します。現在、[healthchecks.ioh](ttps://healthchecks.io/)でのみ動作確認しています。
@@ -150,6 +150,6 @@ python capture_html.py <URL> <出力ファイル名.html>
 
 ## 商標について
 
-本プロジェクト内で言及されている「ポケモン」、「ポケモンカードゲーム」、「プレイヤーズクラブ」、「Pokémon Trading Card Game」その他の関連する名称は、任天堂、クリーチャーズ、ゲームフリーク、株式会社ポケモンの登録商標または商標です。
+本プロジェクト内で言及されている「ポケモン」、「ポケモンカードゲーム」、「Pokémon Trading Card Game」その他の関連する名称は、任天堂、クリーチャーズ、ゲームフリーク、株式会社ポケモンの登録商標または商標です。
 
 本プロジェクトは、これらの企業とは一切関係がなく、公式に承認または後援されているものではありません。
