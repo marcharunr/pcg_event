@@ -31,7 +31,7 @@
 
 1.  **リポジトリをクローン**
     ```bash
-    git clone <repository_url>
+    git clone https://github.com/marcharunr/pcg_event.git
     cd pcg_event
     ```
 
@@ -77,6 +77,7 @@
 
 まず、テスト用のモックHTMLファイルを作成します。
 ```bash
+chmod +x make_mock.sh
 sh make_mock.sh
 ```
 
@@ -108,6 +109,13 @@ macOSでスクリプトを永続的に実行するには、`launchd`を利用す
 
 1.  `deployment/com.user.pcg-event-monitor.plist.example` を `deployment/com.user.pcg-event-monitor.plist` としてコピーします。
 2.  コピーしたファイルを開き、`__PYTHON_EXECUTABLE_PATH__`, `__SCRIPT_PATH__`, `__WORKING_DIRECTORY__` の3つのプレースホルダーを、あなたの環境の絶対パスに書き換えます。
+    -   `__PYTHON_EXECUTABLE_PATH__` は、仮想環境を有効化した状態で `which python` コマンドを実行すると確認できます。
+    ```bash
+    # 仮想環境を有効化
+    source .venv/bin/activate
+    # Pythonの絶対パスを表示
+    which python
+    ```
 3.  ターミナルで以下のコマンドを実行し、`deployment`ディレクトリに移動してから、`launchd`にサービスを登録・起動します。
     ```bash
     cd deployment/
@@ -136,6 +144,13 @@ macOSでスクリプトを永続的に実行するには、`launchd`を利用す
 
 2.  コピーした `com.user.pcg-event-monitor.daemon.plist` を開き、`__YOUR_USERNAME__`, `__PYTHON_EXECUTABLE_PATH__`, `__SCRIPT_PATH__`, `__WORKING_DIRECTORY__` の4つのプレースホルダーを、あなたの環境の実際の値に書き換えます。
     -   `__YOUR_USERNAME__` はあなたのmacOSのユーザー名です（例: `pokemon`）。
+    -   `__PYTHON_EXECUTABLE_PATH__` は、仮想環境を有効化した状態で `which python` コマンドを実行すると確認できます。
+    ```bash
+    # 仮想環境を有効化
+    source .venv/bin/activate
+    # Pythonの絶対パスを表示
+    which python
+    ```
 
 3.  プロジェクトルートにログ用のディレクトリを作成します。
     ```bash
@@ -189,7 +204,7 @@ python capture_html.py <URL> <出力ファイル名.html>
 ```
 
 ## 制限
-- **ページネーション非対応:** たくさんのイベントが検索されてページネーションが発生する場合は最初のページのみをみています。このシステムは、もともとシティリーグの枠がすぐに埋まってしまう地方のイベントのキャンセル枠を拾うために作られました。そのため、たくさんのイベントが発生しないという前提で実装されています。新規シーズンで大量にイベントが登録されたタイミングは監視の必要性が少ないため、このような実装になっています。
+- **ページネーション非対応:** たくさんのイベントが検索されてページネーションが発生する場合は最初のページのみをみています。このシステムは、もともとシティリーグの枠がすぐに埋まってしまう地方のイベントのキャンセル枠を拾うことを想定した実験として作られました。そのため、たくさんのイベントが発生しないという前提で実装されています。新規シーズンで大量にイベントが登録されたタイミングは監視の必要性が少ないため、このような実装になっています。
 - **限られた投稿先:** イベント情報の投稿先は現在のところSlackのみに対応しています。X, Lineは投稿のAPIでの制限が厳しいため、現在のところ対応していません。
 
 ## 📜 ライセンス
