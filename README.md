@@ -14,9 +14,14 @@
 - **詳細なロギング:** `logging`モジュールを使用し、日次でローテーションされるログファイルに全活動を記録します。
 - **高機能なデバッグモード:** 本番とは分離された環境で、正常系・異常系の両方の動作を安全かつ効率的にテストできます。
 
+図1. slack通知
 ![Slack通知のデモ画像](demo_slack.jpg "Slack通知のでも画像")
 
+図2. ハートビート監視の画面
 ![Healthchecks.ioのデモ画像](demo_Healthchecks_io.jpg "Healthchecks.ioのデモ画像")
+
+図3. ハートビート監視のslack通知
+![ハートビート監視のslack通知](demo_Healthchecks_io_slack.jpg "ハートビート監視のslack通知")
 
 ## ⚙️ 動作要件
 
@@ -52,7 +57,9 @@
     ```bash
     cp config.json.example config.json
     ```
-    その後、`config.json`を開き、 `TARGET_URL`を指定してください。このURLは[ポケモンカードゲーム トレーナーズウェブサイトのイベント検索ページ](https://players.pokemon-card.com/event/search)で、希望の条件で検索した際に表示されるURLです。また通知を受けたいslackチャンネルの`SLACK_WEBHOOK_URL`を正しい値に書き換えてください。
+    その後、`config.json`を開き、 `TARGET_URL`を指定してください。このURLは[ポケモンカードゲーム トレーナーズウェブサイトのイベント検索ページ](https://players.pokemon-card.com/event/search)で、希望の条件で検索した際に表示されるURLです。
+    
+    次に、Slackの通知を受けるために`SLACK_WEBHOOK_URL`を正しい値に書き換えてください。まず、ご自身で管理されている Slack Workspace の [Slack App](https://api.slack.com/apps) のページにアクセスします。次に、Slack App を作成し、`Incoming Webhooks` をONにします。最後に`Webhook URL`からURLをコピーして`SLACK_WEBHOOK_URL`の値を書き換えてください。
 
 6.  **(任意) 死活監視の設定**
     スクリプトが停止していないかを監視するために、Healthchecks.io のようなハートビート監視サービスを利用することを推奨します。現在、[healthchecks.ioh](ttps://healthchecks.io/)でのみ動作確認しています。
@@ -92,12 +99,12 @@ python event_checker.py
 #### 例1: nohupによるバックグラウンド実行
 
 ```bash
-nohup python event_checker_v2.py > /dev/null 2>&1 &
+nohup python event_checker.py > /dev/null 2>&1 &
 ```
 
 #### 例2:macOSでの自動起動・再起動 (launchd)
 
-macOSでスクリプトを永続的に実行するには、`launchd`を利用するのが最も堅牢です。
+macOSでスクリプトを永続的に実行するには、`launchd`を利用するのが最も堅牢です。User Agentとして起動する方法を以下で解説します。User Agentでの起動は実行ユーザーがログインしたときに起動し、ユーザー権限で起動されることに注意してください。
 
 1.  `deployment/com.user.pcg-event-monitor.plist.example` を `deployment/com.user.pcg-event-monitor.plist` としてコピーします。
 2.  コピーしたファイルを開き、`__PYTHON_EXECUTABLE_PATH__`, `__SCRIPT_PATH__`, `__WORKING_DIRECTORY__` の3つのプレースホルダーを、あなたの環境の絶対パスに書き換えます。
@@ -111,12 +118,58 @@ macOSでスクリプトを永続的に実行するには、`launchd`を利用す
     launchctl unload com.user.pcg-event-monitor.plist
     ```
 
+#### 例3: macOSサーバーでの永続実行 (System Daemon)
+
+ユーザーがログアウトしてもスクリプトを実行し続けたい場合は、User Agentの代わりに**System Daemon**として登録するのが最適です。System Daemonはシステムの起動時に開始され、特定のユーザーに依存しませんが、`UserName`キーを使うことでユーザー権限やスコープで実行できます。**主な利点:**
+-   Macの起動と同時に自動で実行開始します。
+-   ユーザーがログアウトしても、スクリプトはバックグラウンドで動作し続けます。
+-   `root`権限ではなく、指定したユーザーの権限で安全に実行できます。
+
+**手順:**
+
+1.  System Daemon用の設定ファイル例 `deployment/com.user.pcg-event-monitor.daemon.plist.example` をコピーして、実際に使用する設定ファイルを作成します。
+    ```bash
+    cp deployment/com.user.pcg-event-monitor.daemon.plist.example deployment/com.user.pcg-event-monitor.daemon.plist
+    ```
+
+2.  コピーした `com.user.pcg-event-monitor.daemon.plist` を開き、`__YOUR_USERNAME__`, `__PYTHON_EXECUTABLE_PATH__`, `__SCRIPT_PATH__`, `__WORKING_DIRECTORY__` の4つのプレースホルダーを、あなたの環境の実際の値に書き換えます。
+    -   `__YOUR_USERNAME__` はあなたのmacOSのユーザー名です（例: `pokemon`）。
+
+3.  プロジェクトルートにログ用のディレクトリを作成します。
+    ```bash
+    mkdir -p logs
+    ```
+
+4.  作成した `.plist` ファイルをシステムディレクトリにコピーし、適切な権限を設定します。
+    ```bash
+    # ファイルを /Library/LaunchDaemons/ にコピー
+    sudo cp deployment/com.user.pcg-event-monitor.daemon.plist /Library/LaunchDaemons/
+
+    # ファイルの所有者を root:wheel に変更
+    sudo chown root:wheel /Library/LaunchDaemons/com.user.pcg-event-monitor.daemon.plist
+
+    # ファイルのパーミッションを 644 に変更
+    sudo chmod 644 /Library/LaunchDaemons/com.user.pcg-event-monitor.daemon.plist
+    ```
+
+5.  `launchd`にSystem Daemonとしてサービスを登録・起動します。
+    ```bash
+    sudo launchctl load -w /Library/LaunchDaemons/com.user.pcg-event-monitor.daemon.plist
+    ```
+    `-w` オプションは、サービスが無効化されていても強制的に有効化してロードします。
+
+6.  サービスを停止・登録解除する場合は、以下のコマンドを実行します。
+    ```bash
+    sudo launchctl unload -w /Library/LaunchDaemons/com.user.pcg-event-monitor.daemon.plist
+    ```
+
 ## 🔧 設定項目 (`config.json`)
 
 - `SLACK_WEBHOOK_URL`: (必須) 通知を送信するSlackのIncoming Webhook URL。
 - `TARGET_URL`: (必須) 監視対象のイベント検索ページのURL。
 - `MIN_INTERVAL_SECONDS`: 最小チェック間隔（秒）。
 - `MAX_INTERVAL_SECONDS`: 最大チェック間隔（秒）。この範囲でランダムに待機します。
+- `SLACK_MENTION`: (任意) 通知時に追加するメンション。例: `@channel`, `@here`, `@U12345678` など。
 - `HEALTHCHECKS_URL`: (任意) Healthchecks.io などの死活監視サービスから取得したPing URL。
 - `DEBUG_MODE`: `true`にするとデバッグモードで実行します。
 - `INJECT_PAGE_ERROR`: (デバッグ用) `true`にすると、意図的にページ取得エラーを発生させ、エラー通知をテストします。
@@ -134,7 +187,8 @@ python capture_html.py <URL> <出力ファイル名.html>
 ```
 
 ## 制限
-たくさんのイベントが検索されてページネーションが発生する場合は最初のページのみをみています。このシステムは、もともとシティリーグの枠がすぐに埋まってしまう地方のイベントのキャンセル枠を拾うために作られました。そのため、たくさんのイベントが発生しないという前提で実装されています。新規シーズンで大量にイベントが登録されたタイミングは監視の必要性が少ないため、このような実装になっています。
+- **ページネーション非対応:** たくさんのイベントが検索されてページネーションが発生する場合は最初のページのみをみています。このシステムは、もともとシティリーグの枠がすぐに埋まってしまう地方のイベントのキャンセル枠を拾うために作られました。そのため、たくさんのイベントが発生しないという前提で実装されています。新規シーズンで大量にイベントが登録されたタイミングは監視の必要性が少ないため、このような実装になっています。
+- **限られた投稿先:** イベント情報の投稿先は現在のところSlackのみに対応しています。X, Lineは投稿のAPIでの制限が厳しいため、現在のところ対応していません。
 
 ## 📜 ライセンス
 

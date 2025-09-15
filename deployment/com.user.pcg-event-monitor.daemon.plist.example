@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- サービスの一意な名前。User Agent版と区別するため .daemon を付与 -->
+    <key>Label</key>
+    <string>com.user.pcg-event-monitor.daemon</string>
+
+    <!-- 実行するユーザー名を指定 (rootでの実行を避けるため) -->
+    <key>UserName</key>
+    <string>__YOUR_USERNAME__</string>
+
+    <!-- 実行するコマンドと引数 -->
+    <key>ProgramArguments</key>
+    <array>
+        <!-- 1. Python実行可能ファイルの絶対パス -->
+        <string>__PYTHON_EXECUTABLE_PATH__</string>
+        <!-- 2. スクリプトファイルの絶対パス -->
+        <string>__SCRIPT_PATH__</string>
+    </array>
+
+    <!-- 3. スクリプトの作業ディレクトリの絶対パス -->
+    <key>WorkingDirectory</key>
+    <string>__WORKING_DIRECTORY__</string>
+
+    <!-- クラッシュした場合などに自動で再起動する -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- 標準出力と標準エラーのログファイルパス -->
+    <key>StandardOutPath</key>
+    <string>__WORKING_DIRECTORY__/logs/launchd.daemon.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>__WORKING_DIRECTORY__/logs/launchd.daemon.err.log</string>
+</dict>
+</plist>

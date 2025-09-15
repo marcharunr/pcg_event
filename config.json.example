@@ -4,6 +4,7 @@
     "MIN_INTERVAL_SECONDS": 6600,
     "MAX_INTERVAL_SECONDS": 7800,
     "HEALTHCHECKS_URL": "",
+    "SLACK_MENTION": "",
     "DEBUG_MODE": false,
     "INJECT_PAGE_ERROR": false,
     "INJECT_PARSE_ERROR": false

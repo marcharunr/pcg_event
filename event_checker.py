@@ -21,6 +21,7 @@ try:
     MIN_INTERVAL_SECONDS = config.get("MIN_INTERVAL_SECONDS", 30)
     MAX_INTERVAL_SECONDS = config.get("MAX_INTERVAL_SECONDS", 60)
     HEALTHCHECKS_URL = config.get("HEALTHCHECKS_URL", "")
+    SLACK_MENTION = config.get("SLACK_MENTION", "")
     DEBUG_MODE = config.get("DEBUG_MODE", False)
     INJECT_PAGE_ERROR = config.get("INJECT_PAGE_ERROR", False)
     INJECT_PARSE_ERROR = config.get("INJECT_PARSE_ERROR", False)
@@ -115,6 +116,29 @@ def send_slack_notification(new_events: List[Dict[str, str]], is_alert: bool = F
             ])
             fallback_text = f"{len(new_events)}件の新規イベントを発見しました。"
         
+        # メンションが設定されていれば、メッセージの先頭に追加
+        if SLACK_MENTION:
+            # Block Kit用のメンション文字列を生成
+            if SLACK_MENTION in ["@channel", "@here", "@everyone"]:
+                mention_text = f"<!{SLACK_MENTION[1:]}>"
+            elif SLACK_MENTION.startswith('@U') or SLACK_MENTION.startswith('@W'): # User or User Group
+                mention_text = f"<{SLACK_MENTION}>"
+            else:
+                # 不明な形式はそのままテキストとして表示
+                mention_text = SLACK_MENTION
+
+            mention_block = {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": mention_text
+                }
+            }
+            # ヘッダーの直後にメンションブロックを挿入
+            blocks.insert(1, mention_block)
+            # フォールバックテキストにもメンションを追加
+            fallback_text = f"{mention_text} {fallback_text}"
+
         payload = {"text": fallback_text, "blocks": blocks}
 
         response = requests.post(
