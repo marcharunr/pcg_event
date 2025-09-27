@@ -171,29 +171,22 @@ def send_heartbeat():
 
 def get_page_content(page: Optional[Page]) -> str:
     """Webページの内容を取得またはデバッグ用のファイルを読み込む"""
-    try:
-        # デバッグ用のエラー注入
-        if DEBUG_MODE and INJECT_PAGE_ERROR:
-            logging.debug("INJECT_PAGE_ERRORが有効なため、意図的にページ取得エラーを発生させます。")
-            raise Exception("【テスト用】意図的に発生させたページ取得エラー")
+    # デバッグ用のエラー注入
+    if DEBUG_MODE and INJECT_PAGE_ERROR:
+        logging.debug("INJECT_PAGE_ERRORが有効なため、意図的にページ取得エラーを発生させます。")
+        raise Exception("【テスト用】意図的に発生させたページ取得エラー")
 
-    except Exception as e:
-        # この関数内で発生したエラー（注入されたものを含む）をここで処理する
-        error_info = f"ページの取得処理でエラーが発生しました。\n\n詳細:\n{traceback.format_exc()}"
-        logging.error(error_info, exc_info=True)
-        send_slack_notification([], is_alert=True, alert_message=error_info)
-        return ""
     if DEBUG_MODE:
         logging.debug("デバッグモードで実行中。ローカルのレンダリング済みHTMLを読み込みます。")
         try:
             # 状態変化をシミュレート
             if int(time.time()) % 20 < 10:
                 logging.debug(f"ファイル '{DEBUG_HTML_FILE_NOT_FOUND}' を使用します。")
-                filepath = DEBUG_HTML_FILE_NOT_FOUND
+                filepath = DEBUG_HTML_FILE_NOT_FOUND 
             else:
                 logging.debug(f"ファイル '{DEBUG_HTML_FILE_FOUND}' を使用します。")
                 filepath = DEBUG_HTML_FILE_FOUND
-            
+
             with open(filepath, "r", encoding="utf-8") as f:
                 return f.read()
         except FileNotFoundError as e:
@@ -201,28 +194,24 @@ def get_page_content(page: Optional[Page]) -> str:
             logging.info("[ヒント] `capture_html.py` を実行してモックファイルを作成してください。")
             return ""
     else:
+        if not page:
+            raise ValueError("通常モードではPlaywrightのPageオブジェクトが必要です。")
+
+        page.goto(TARGET_URL, wait_until="networkidle", timeout=20000)
+
+        # Cookie同意バナーが表示された場合に対応
         try:
-            if not page:
-                raise ValueError("通常モードではPlaywrightのPageオブジェクトが必要です。")
-            page.goto(TARGET_URL, wait_until="networkidle", timeout=20000)
-
-            # Cookie同意バナーが表示された場合に対応
-            try:
-                # タイムアウトを短めに設定し、バナーがなければすぐに次に進む
-                page.locator('button:has-text("同意する")').click(timeout=3000)
-                logging.info("Cookieに同意しました。")
-            except Exception:
-                # バナーがない場合はタイムアウトしてここに来るが、問題ないので処理を続ける
-                pass
-
-            # イベントリストか、「イベントなし」メッセージのどちらかが表示されるまで待つ
-            page.wait_for_selector("div.noResult, a.eventListItem", timeout=15000)
-            return page.content()
+            # タイムアウトを短めに設定し、バナーがなければすぐに次に進む
+            page.locator('button:has-text("同意する")').click(timeout=3000)
+            logging.info("Cookieに同意しました。")
         except Exception as e:
-            error_info = f"ページの取得処理でエラーが発生しました。\n\n詳細:\n{e}"
-            logging.error(error_info, exc_info=True)
-            send_slack_notification([], is_alert=True, alert_message=error_info)
-            return ""
+            # バナーがない場合はタイムアウトしてここに来るが、問題ないので処理を続ける
+            logging.debug(f"Cookie同意ボタンの処理中にタイムアウトまたはエラーが発生しました（通常は問題ありません）: {e}")
+
+        # イベントリストか、「イベントなし」メッセージのどちらかが表示されるまで待つ
+        page.wait_for_selector("div.noResult, a.eventListItem", timeout=15000)
+        return page.content()
+
 
 def extract_event_details(html_content: str) -> List[Dict[str, str]]:
     """HTMLの内容を解析し、イベント情報のリストを抽出する"""
@@ -312,17 +301,24 @@ def clear_notified_events_in_db():
     con.close()
     logging.info("通知済みイベントDBをクリアしました。")
 
-def run_loop(page: Optional[Page]):
+def run_loop(p: Optional[Playwright]):
     """監視処理のメインループ"""
     notified_event_links = load_notified_events_from_db()
     while True:
+        browser: Optional[Browser] = None
         try:
             logging.info("ページをチェックします...")
 
+            # --- ブラウザのセットアップ ---
+            page: Optional[Page] = None
+            if not DEBUG_MODE:
+                if not p:
+                    raise ValueError("本番モードではPlaywrightインスタンスが必要です。")
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+            # -------------------------
+
             html = get_page_content(page)
-            if not html:
-                # get_page_content内でエラーが発生した場合、次のサイクルまで待つ
-                logging.warning("HTMLの取得に失敗しました。次のサイクルでリトライします。")
 
             # デバッグ用のエラー注入
             if DEBUG_MODE and INJECT_PARSE_ERROR:
@@ -330,43 +326,46 @@ def run_loop(page: Optional[Page]):
                 raise Exception("【テスト用】意図的に発生させた解析エラー")
 
             found_events = extract_event_details(html)
-            if html: # HTMLの取得が成功した場合のみ、解析と通知処理を行う
-                logging.info(f"{len(found_events)}件のイベントをページ上で確認しました。")
+            logging.info(f"{len(found_events)}件のイベントをページ上で確認しました。")
 
-                new_events = [event for event in found_events if event["link"] not in notified_event_links]
+            new_events = [event for event in found_events if event["link"] not in notified_event_links]
 
-                if new_events:
-                    logging.info("=" * 60)
-                    logging.info(f"！！！新規イベントを {len(new_events)} 件発見しました！！！")
-                    logging.info("=" * 60)
-                    
-                    for event in new_events:
-                        logging.info(f"- {event['name']} ({event['date']})")
-                    # Slack通知を先に試みる
-                    send_slack_notification(new_events, is_alert=False)
+            if new_events:
+                logging.info("=" * 60)
+                logging.info(f"！！！新規イベントを {len(new_events)} 件発見しました！！！")
+                logging.info("=" * 60)
 
-                    # 通知が成功したら、DBとメモリ上のセットを更新
-                    for event in new_events:
-                        notified_event_links.add(event["link"])
-                        save_event_to_db(event["link"])
-                    logging.info(f"{len(new_events)}件の新規イベントを通知済みとして保存しました。")
-                
-                elif found_events:
-                    logging.info("新規イベントはありません。引き続き募集中です。")
-                else:
-                    logging.info("現在、受付中のイベントはありません。")
-                    if notified_event_links:
-                        notified_event_links.clear()
-                        clear_notified_events_in_db()
+                for event in new_events:
+                    logging.info(f"- {event['name']} ({event['date']})")
+                # Slack通知を先に試みる
+                send_slack_notification(new_events, is_alert=False)
+
+                # 通知が成功したら、DBとメモリ上のセットを更新
+                for event in new_events:
+                    notified_event_links.add(event["link"])
+                    save_event_to_db(event["link"])
+                logging.info(f"{len(new_events)}件の新規イベントを通知済みとして保存しました。")
+            elif found_events:
+                logging.info("新規イベントはありません。引き続き募集中です。")
+            else:
+                logging.info("現在、受付中のイベントはありません。")
+                if notified_event_links:
+                    notified_event_links.clear()
+                    clear_notified_events_in_db()
 
             # 正常に1サイクルが完了したことを通知
             send_heartbeat()
 
         except Exception as e:
             # logging.exceptionは、exceptブロック内で使うと自動でトレースバック情報をログに含めてくれる
-            error_info = f"メインループ（解析処理など）でエラーが発生しました。\n\n詳細:\n{e}"
+            error_info = f"メインループで予期せぬエラーが発生しました。\n\n詳細:\n{e}"
             logging.critical(error_info, exc_info=True)
             send_slack_notification([], is_alert=True, alert_message=error_info)
+        finally:
+            # 各サイクルの最後に必ずブラウザを閉じる
+            if browser:
+                browser.close()
+                logging.info("ブラウザを閉じました。")
 
 
         # ランダムな待機時間（ジッター）を生成
@@ -414,12 +413,10 @@ def main():
         clear_notified_events_in_db()
 
     if DEBUG_MODE:
-        run_loop(None)
+        run_loop(None) # デバッグモードではPlaywrightインスタンスは不要
     else:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True) # Trueでバックグラウンド実行
-            page = browser.new_page()
-            run_loop(page)
+            run_loop(p)
 
 if __name__ == "__main__":
     try:

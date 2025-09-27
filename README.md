@@ -40,6 +40,7 @@
     python -m venv .venv
     source .venv/bin/activate
     # Windowsの場合は .\.venv\Scripts\activate
+    # fishシェルの場合は source .venv/bin/activate.fish
     ```
 
 3.  **依存パッケージのインストール**
@@ -74,6 +75,8 @@
 ### デバッグモードでの実行
 
 スクリプトの動作や通知のテストを行うには、`config.json`の`"DEBUG_MODE"`を`true`に設定します。
+
+まず、`config.json` に `TARGET_URL` が正しく設定されていることを確認してください。`make_mock.sh` はこのURLを使ってテスト用のHTMLを生成します。
 
 まず、テスト用のモックHTMLファイルを作成します。
 ```bash
@@ -118,6 +121,10 @@ macOSでスクリプトを永続的に実行するには、`launchd`を利用す
     ```
 3.  ターミナルで以下のコマンドを実行し、`deployment`ディレクトリに移動してから、`launchd`にサービスを登録・起動します。
     ```bash
+    # (注意) 以下の設定ではログが/dev/nullに捨てられます。
+    # トラブルシューティングのためにログを残したい場合は、
+    # .plistファイル内のStandardOutPathとStandardErrorPathを
+    # ログファイル（例: /Users/your_name/Projects/pcg_event/logs/output.log）に変更してください。
     cd deployment/
     launchctl load com.user.pcg-event-monitor.plist
     ```
